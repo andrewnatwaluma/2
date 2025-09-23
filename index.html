@@ -1,0 +1,131 @@
+[file name]: index.html
+[file content begin]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUMI Elections - Voting System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Election Timer -->
+    <div id="electionTimer">
+        <i class="fas fa-clock"></i>
+        <span id="countdownText">Election ends in: </span>
+        <span id="countdown"></span>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>FUMI Elections - Voting System</h1>
+            <p>Federation for Uganda Medical Interns</p>
+            <div class="fumi-logo">
+                <i class="fas fa-hospital-user fa-2x"></i>
+                <span>Here to Serve the Nation</span>
+                <i class="fas fa-stethoscope fa-2x"></i>
+            </div>
+        </header>
+        
+        <div class="progress-container">
+            <div class="progress-steps">
+                <div class="step completed">1</div>
+                <div class="step completed">2</div>
+                <div class="step active">3</div>
+                <div class="step">4</div>
+            </div>
+            <div class="progress-text">Step 3 of 4: Cast Your Votes</div>
+        </div>
+        
+        <main>
+            <!-- Section 1: Voter Login -->
+            <section id="loginSection" class="active">
+                <h2>Voter Login</h2>
+                <p>Enter your full name as it appears in the registry.</p>
+                <input type="text" id="voterName" placeholder="Your Full Name">
+                <button onclick="handleVoterLogin()">Login</button>
+                <p id="loginMessage" class="message info">Please enter your name to begin voting</p>
+                <p><a href="admin-login.html" class="admin-link">Administrator Login</a></p>
+            </section>
+
+            <!-- Section 2: Voter Details & License Upload -->
+            <section id="voterDetailsSection">
+                <h2>Welcome, <span id="displayName">Medical Intern</span>!</h2>
+                <div class="voter-details">
+                    <p><strong>University:</strong> <span id="displayUniversity">Uganda Medical School</span></p>
+                    <p><strong>Qualification:</strong> <span id="displayQualification">Medical Doctor</span></p>
+                    <p><strong>Sex:</strong> <span id="displaySex"></span></p>
+                    <p><strong>Nationality:</strong> <span id="displayNationality">Ugandan</span></p>
+                    <p><strong>Year of Completion:</strong> <span id="displayCompletionYear">2025</span></p>
+                    <p><strong>Internship Center:</strong> <span id="displayInternshipCenter"></span></p>
+                </div>
+
+                <h3>Step 2: Verify Your Identity</h3>
+                <p>Please upload a clear picture of your provisional license.</p>
+                <input type="file" id="licenseUpload" accept="image/*">
+                <button onclick="handleLicenseUpload()">Upload License</button>
+                <p id="uploadMessage" class="message info">Please upload your license for verification</p>
+            </section>
+
+            <!-- Section 3: Voting Interface -->
+            <section id="votingSection">
+                <h2>Cast Your Vote</h2>
+                <p>Please select your preferred candidate for each position. You may skip any position you don't wish to vote for.</p>
+                
+                <div class="completion-alert" id="completionAlert">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="completionText">You have voted for 0 of 0 positions</span>
+                </div>
+                
+                <div class="positions-container" id="positionsContainer">
+                    <!-- Positions loaded dynamically -->
+                </div>
+                
+                <div class="navigation">
+                    <button onclick="reviewVotes()" id="reviewButton" disabled>Review Votes</button>
+                </div>
+            </section>
+
+            <!-- Section 4: Review Votes -->
+            <section id="reviewSection">
+                <h2>Review Your Votes</h2>
+                <p>Please review your selections before submitting.</p>
+                
+                <div class="review-vote" id="reviewContainer">
+                    <!-- Review items loaded dynamically -->
+                </div>
+                
+                <p id="votingMessage" class="message info">Please confirm your votes before submitting</p>
+                
+                <div class="navigation">
+                    <button onclick="goBackToVoting()" class="secondary-btn">Modify Votes</button>
+                    <button onclick="castVotes()" id="submitVoteButton">Submit Votes</button>
+                </div>
+            </section>
+
+            <!-- Section 5: Voting Complete -->
+            <section id="completionSection">
+                <div class="completion-screen">
+                    <i class="fas fa-check-circle"></i>
+                    <h2>Voting Complete</h2>
+                    <p>Thank you for participating in the FUMI election. Your votes have been recorded.</p>
+                    <div class="completion-buttons">
+                        <button onclick="window.location.href='results.html'" class="secondary-btn">View Current Results</button>
+                        <button onclick="window.location.reload()">Return to Home</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>FUMI Secure Voting System &copy; 2023 | All votes are confidential and encrypted</p>
+            <p>P. Box 103050, Kampala Uganda | Mobile: +256702692950 | Tel: +256772691562</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+[file content end]
