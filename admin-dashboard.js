@@ -1,5 +1,3 @@
-[file name]: admin-dashboard.js
-[file content begin]
 // admin-dashboard.js - Complete Admin Dashboard Functionality
 const SUPABASE_URL = 'https://aeulakfebabgocbevjis.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFldWxha2ZlYmFiZ29jYmV2amlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NzYzMjIsImV4cCI6MjA3NDE1MjMyMn0.TAdkgFLLdpfn38YWRSnTtveEJLFVk_c8EgE9nEwoLf0';
@@ -641,4 +639,3 @@ window.exportResults = exportResults;
 window.refreshAllData = refreshAllData;
 window.refreshResults = refreshResults;
 window.logout = logout;
-[file content end]
