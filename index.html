@@ -36,7 +36,7 @@
                 <div class="step active">3</div>
                 <div class="step">4</div>
             </div>
-            <div class="progress-text">Step 3 of 4: Cast Your Votes</div>
+            <div class="progress-text">Step 2 of 4: Verify Identity</div>
         </div>
         
         <main>
@@ -65,12 +65,45 @@
                 </div>
 
                 <h3>Step 2: Verify Your Identity</h3>
-                <p>Upload a picture of your provisional license</p>
-                <input type="file" id="licenseUpload" accept="image/*" capture="camera">
-                <button onclick="handleLicenseUpload()">
-                    <i class="fas fa-upload"></i> Upload License
-                </button>
-                <p id="uploadMessage" class="message info">Please upload your license for verification</p>
+                <p>Upload a clear picture of your provisional license (Max: 10MB)</p>
+                
+                <!-- Enhanced License Upload Options -->
+                <div class="upload-options">
+                    <div class="upload-option" onclick="openCamera()">
+                        <i class="fas fa-camera"></i>
+                        <span>Take Photo</span>
+                        <p>Use your camera to take a new picture</p>
+                    </div>
+                    
+                    <div class="upload-option" onclick="openGallery()">
+                        <i class="fas fa-images"></i>
+                        <span>Choose from Gallery</span>
+                        <p>Select an existing photo from your device</p>
+                    </div>
+                </div>
+
+                <div class="file-size-warning">
+                    <i class="fas fa-info-circle"></i> Maximum file size: 10MB • Supported formats: JPEG, PNG, WebP
+                </div>
+
+                <!-- Hidden file input for both options -->
+                <input type="file" id="licenseUpload" accept="image/*" capture="environment" style="display: none;">
+                
+                <!-- Preview Section -->
+                <div id="licensePreview" class="license-preview" style="display: none;">
+                    <h4>License Preview</h4>
+                    <img id="previewImage" src="" alt="License preview">
+                    <div class="preview-actions">
+                        <button onclick="confirmUpload()" class="secondary-btn">
+                            <i class="fas fa-check"></i> Confirm Upload
+                        </button>
+                        <button onclick="cancelUpload()" class="danger-btn">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <p id="uploadMessage" class="message info">Please upload your provisional license for verification</p>
             </section>
 
             <!-- Section 3: Voting Interface -->
