@@ -54,7 +54,7 @@ function checkDeviceVotingStatus() {
         loginSection.innerHTML += `
             <div class="message warning">
                 <i class="fas fa-exclamation-triangle"></i>
-                This device has already been used to vote. Please use a different device if you need to vote again.
+                This device has already been used to vote.
             </div>
         `;
     }
@@ -458,7 +458,7 @@ async function castVotes() {
         
         showMessage(votingMessage, `Success! ${votesCast} vote(s) recorded.`, 'success');
         
-        // Show completion screen
+        // Show completion screen (CHANGED: No redirect to results page)
         setTimeout(() => {
             showSection('completionSection');
         }, 2000);
@@ -501,11 +501,7 @@ function updateProgress(step, text) {
 
 function showAlreadyVotedNotification() {
     const loginMessage = document.getElementById('loginMessage');
-    showMessage(loginMessage, 'You have already voted. Redirecting to results...', 'error');
-    
-    setTimeout(() => {
-        window.location.href = 'results.html';
-    }, 2000);
+    showMessage(loginMessage, 'You have already voted.', 'error');
 }
 
 // Make functions globally available
