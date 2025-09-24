@@ -43,14 +43,6 @@
                         <div id="adminLoginMessage" class="message"></div>
                     </div>
                     
-                    <div class="login-info">
-                        <h3>Access Levels:</h3>
-                        <ul>
-                            <li><strong>Admin:</strong> View results and statistics</li>
-                            <li><strong>Superadmin:</strong> Full system access including voter management</li>
-                        </ul>
-                    </div>
-                    
                     <p><a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to Voter Login</a></p>
                 </div>
             </section>
@@ -82,7 +74,7 @@
             const user = ADMIN_CREDENTIALS[username];
             
             if (user && user.password === password) {
-                showLoginMessage(messageElement, `Login successful! Redirecting... (${user.role} access)`, 'success');
+                showLoginMessage(messageElement, `Login successful! Redirecting...`, 'success');
                 
                 // Store admin session data
                 localStorage.setItem('adminRole', user.role);
