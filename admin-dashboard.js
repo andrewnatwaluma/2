@@ -66,23 +66,18 @@ async function loadAdminData() {
     checkDatabaseStatus();
 }
 
-// Load admin statistics
+// Load admin statistics (CHANGED: Only show total voters and turnout)
 async function loadAdminStats() {
     try {
         const [
             { count: totalVoters },
-            { count: votedCount },
-            { count: totalVotes },
-            { data: positions }
+            { count: votedCount }
         ] = await Promise.all([
             supabase.from('voters').select('*', { count: 'exact', head: true }),
-            supabase.from('voters').select('*', { count: 'exact', head: true }).eq('has_voted', true),
-            supabase.from('votes').select('*', { count: 'exact', head: true }),
-            supabase.from('positions').select('*')
+            supabase.from('voters').select('*', { count: 'exact', head: true }).eq('has_voted', true)
         ]);
 
         const turnout = totalVoters > 0 ? Math.round((votedCount / totalVoters) * 100) : 0;
-        const avgVotesPerVoter = votedCount > 0 ? (totalVotes / votedCount).toFixed(1) : 0;
 
         document.getElementById('adminStats').innerHTML = `
             <div class="stat-item">
@@ -91,29 +86,9 @@ async function loadAdminStats() {
                 <span class="stat-label">Total Voters</span>
             </div>
             <div class="stat-item">
-                <i class="fas fa-vote-yea"></i>
-                <span class="stat-value">${votedCount || 0}</span>
-                <span class="stat-label">Voted</span>
-            </div>
-            <div class="stat-item">
                 <i class="fas fa-chart-pie"></i>
                 <span class="stat-value">${turnout}%</span>
                 <span class="stat-label">Turnout</span>
-            </div>
-            <div class="stat-item">
-                <i class="fas fa-bullseye"></i>
-                <span class="stat-value">${positions?.length || 0}</span>
-                <span class="stat-label">Positions</span>
-            </div>
-            <div class="stat-item">
-                <i class="fas fa-calculator"></i>
-                <span class="stat-value">${totalVotes || 0}</span>
-                <span class="stat-label">Total Votes</span>
-            </div>
-            <div class="stat-item">
-                <i class="fas fa-average"></i>
-                <span class="stat-value">${avgVotesPerVoter}</span>
-                <span class="stat-label">Avg Votes/Voter</span>
             </div>
         `;
 
@@ -123,7 +98,7 @@ async function loadAdminStats() {
     }
 }
 
-// Load election results
+// Load election results (CHANGED: Admin sees percentages only, not actual vote counts)
 async function loadResults() {
     try {
         const { data: results, error } = await supabase
@@ -151,7 +126,7 @@ async function loadResults() {
             resultsByPosition[result.position_title].push(result);
         });
 
-        // Full results display
+        // Full results display (CHANGED: Show percentages only)
         let resultsHTML = '';
         let previewHTML = '';
 
@@ -160,13 +135,13 @@ async function loadResults() {
             
             const positionResultsHTML = `
                 <div class="position-results">
-                    <h3>${positionTitle} (${totalVotes} total votes)</h3>
+                    <h3>${positionTitle}</h3>
                     ${candidates.map(candidate => {
                         const percentage = totalVotes > 0 ? Math.round((candidate.vote_count / totalVotes) * 100) : 0;
                         return `
                             <div class="candidate-result">
                                 <span>${candidate.candidate_name}</span>
-                                <strong>${candidate.vote_count} votes (${percentage}%)</strong>
+                                <strong>${percentage}%</strong>
                             </div>
                         `;
                     }).join('')}
@@ -310,23 +285,24 @@ async function selectVoterForAction(voterId, voterName, hasVoted) {
     
     document.getElementById('selectedVoterName').textContent = voterName;
     
-    // Get voter's current vote
-    let currentVote = 'Not voted yet';
+    // Get voter's current votes
+    let currentVotesInfo = 'Not voted yet';
     try {
-        const { data: vote, error } = await supabase
+        const { data: votes, error } = await supabase
             .from('votes')
-            .select('candidates(name)')
-            .eq('voter_id', voterId)
-            .maybeSingle();
+            .select('candidates(name), positions(title)')
+            .eq('voter_id', voterId);
 
-        if (!error && vote) {
-            currentVote = vote.candidates.name;
+        if (!error && votes && votes.length > 0) {
+            currentVotesInfo = votes.map(vote => 
+                `${vote.positions.title}: ${vote.candidates.name}`
+            ).join('; ');
         }
     } catch (error) {
-        console.error('Error getting voter vote:', error);
+        console.error('Error getting voter votes:', error);
     }
 
-    const statusText = hasVoted ? `Voted - ${currentVote}` : 'Not voted yet';
+    const statusText = hasVoted ? `Voted - ${currentVotesInfo}` : 'Not voted yet';
     document.getElementById('voterVoteStatus').textContent = statusText;
     document.getElementById('voterVoteStatus').className = `status-badge ${hasVoted ? 'voted' : 'not-voted'}`;
     
@@ -336,7 +312,7 @@ async function selectVoterForAction(voterId, voterName, hasVoted) {
     document.getElementById('voterActionSection').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Change voter's vote (superadmin override)
+// Change voter's vote (superadmin override) - CHANGED: Only override specific position, keep others
 async function changeVote() {
     if (window.adminApp.adminRole !== 'superadmin') return;
 
@@ -365,17 +341,27 @@ async function changeVote() {
 
         if (candidateError) throw candidateError;
 
-        // Delete existing votes for this voter
+        // Get the position title for the selected candidate
+        const { data: position, error: positionError } = await supabase
+            .from('positions')
+            .select('title')
+            .eq('id', candidate.position_id)
+            .single();
+
+        if (positionError) throw positionError;
+
+        // Delete only the vote for this specific position (CHANGED: Only delete specific position vote)
         const { error: deleteError } = await supabase
             .from('votes')
             .delete()
-            .eq('voter_id', window.adminApp.selectedVoterId);
+            .eq('voter_id', window.adminApp.selectedVoterId)
+            .eq('position_id', candidate.position_id);
 
         if (deleteError && deleteError.code !== 'P0001') { // Ignore no rows affected
             throw deleteError;
         }
 
-        // Insert new vote
+        // Insert new vote for this position
         const { error: insertError } = await supabase
             .from('votes')
             .insert([{
@@ -386,15 +372,16 @@ async function changeVote() {
 
         if (insertError) throw insertError;
 
-        // Update voter status
+        // Update voter status if not already voted
         const { error: updateError } = await supabase
             .from('voters')
             .update({ has_voted: true })
-            .eq('id', window.adminApp.selectedVoterId);
+            .eq('id', window.adminApp.selectedVoterId)
+            .eq('has_voted', false);
 
         if (updateError) throw updateError;
 
-        showAdminMessage(messageElement, 'Vote successfully updated!', 'success');
+        showAdminMessage(messageElement, `Vote for ${position.title} successfully updated! Other votes remain unchanged.`, 'success');
         
         // Refresh data
         setTimeout(() => {
