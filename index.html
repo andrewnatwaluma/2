@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FUMI Elections - Voting System</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="theme-color" content="#1a237e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
     <!-- Election Timer -->
@@ -17,12 +20,12 @@
 
     <div class="container">
         <header>
-            <h1>FUMI Elections - Voting System</h1>
+            <h1>FUMI Elections</h1>
             <p>Federation for Uganda Medical Interns</p>
             <div class="fumi-logo">
-                <i class="fas fa-hospital-user fa-2x"></i>
+                <i class="fas fa-hospital-user"></i>
                 <span>Here to Serve the Nation</span>
-                <i class="fas fa-stethoscope fa-2x"></i>
+                <i class="fas fa-stethoscope"></i>
             </div>
         </header>
         
@@ -40,11 +43,13 @@
             <!-- Section 1: Voter Login -->
             <section id="loginSection" class="active">
                 <h2>Voter Login</h2>
-                <p>Enter your full name as it appears in the registry.</p>
-                <input type="text" id="voterName" placeholder="Your Full Name">
+                <p>Enter your full name as registered</p>
+                <input type="text" id="voterName" placeholder="Your Full Name" autocapitalize="words">
                 <button onclick="handleVoterLogin()">Login</button>
                 <p id="loginMessage" class="message info">Please enter your name to begin voting</p>
-                <p><a href="admin-login.html" class="admin-link">Administrator Login</a></p>
+                <a href="admin-login.html" class="admin-link">
+                    <i class="fas fa-lock"></i> Administrator Login
+                </a>
             </section>
 
             <!-- Section 2: Voter Details & License Upload -->
@@ -60,16 +65,18 @@
                 </div>
 
                 <h3>Step 2: Verify Your Identity</h3>
-                <p>Please upload a clear picture of your provisional license.</p>
-                <input type="file" id="licenseUpload" accept="image/*">
-                <button onclick="handleLicenseUpload()">Upload License</button>
+                <p>Upload a picture of your provisional license</p>
+                <input type="file" id="licenseUpload" accept="image/*" capture="camera">
+                <button onclick="handleLicenseUpload()">
+                    <i class="fas fa-upload"></i> Upload License
+                </button>
                 <p id="uploadMessage" class="message info">Please upload your license for verification</p>
             </section>
 
             <!-- Section 3: Voting Interface -->
             <section id="votingSection">
                 <h2>Cast Your Vote</h2>
-                <p>Please select your preferred candidate for each position. You may skip any position you don't wish to vote for.</p>
+                <p>Select your preferred candidate for each position. You may skip any position.</p>
                 
                 <div class="completion-alert" id="completionAlert">
                     <i class="fas fa-info-circle"></i>
@@ -81,7 +88,9 @@
                 </div>
                 
                 <div class="navigation">
-                    <button onclick="reviewVotes()" id="reviewButton" disabled>Review Votes</button>
+                    <button onclick="reviewVotes()" id="reviewButton" disabled>
+                        <i class="fas fa-clipboard-check"></i> Review Votes
+                    </button>
                 </div>
             </section>
 
@@ -97,8 +106,12 @@
                 <p id="votingMessage" class="message info">Please confirm your votes before submitting</p>
                 
                 <div class="navigation">
-                    <button onclick="goBackToVoting()" class="secondary-btn">Modify Votes</button>
-                    <button onclick="castVotes()" id="submitVoteButton">Submit Votes</button>
+                    <button onclick="goBackToVoting()" class="secondary-btn">
+                        <i class="fas fa-arrow-left"></i> Modify Votes
+                    </button>
+                    <button onclick="castVotes()" id="submitVoteButton">
+                        <i class="fas fa-paper-plane"></i> Submit Votes
+                    </button>
                 </div>
             </section>
 
@@ -108,16 +121,18 @@
                     <i class="fas fa-check-circle"></i>
                     <h2>Voting Complete</h2>
                     <p>Thank you for participating in the FUMI election. Your votes have been recorded.</p>
-                    <div class="completion-buttons">
-                        <button onclick="window.location.reload()">Return to Home</button>
+                    <div class="navigation">
+                        <button onclick="window.location.reload()">
+                            <i class="fas fa-home"></i> Return to Home
+                        </button>
                     </div>
                 </div>
             </section>
         </main>
         
         <footer>
-            <p>FUMI Secure Voting System &copy; 2025 | All votes are confidential and encrypted</p>
-            <p>P. Box 103050, Kampala Uganda | Mobile: +256702692950 | Tel: +256772691562</p>
+            <p>FUMI Secure Voting System &copy; 2025</p>
+            <p>All votes are confidential and encrypted</p>
         </footer>
     </div>
 
