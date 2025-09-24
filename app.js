@@ -1,4 +1,4 @@
-// app.js - Complete Voting System with Multi-Position Support
+// app.js - Enhanced Voting System with Candidate Pictures Support
 const SUPABASE_URL = 'https://aeulakfebabgocbevjis.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFldWxha2ZlYmFiZ29jYmV2amlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NzYzMjIsImV4cCI6MjA3NDE1MjMyMn0.TAdkgFLLdpfn38YWRSnTtveEJLFVk_c8EgE9nEwoLf0';
 
@@ -149,7 +149,7 @@ function handleLicenseUpload() {
 // Load candidates for all positions
 async function loadCandidates() {
     const positionsContainer = document.getElementById('positionsContainer');
-    positionsContainer.innerHTML = '<p>Loading positions...</p>';
+    positionsContainer.innerHTML = '<div class="loading-results"><i class="fas fa-spinner fa-spin"></i><p>Loading positions and candidates...</p></div>';
 
     try {
         // Load positions
@@ -164,7 +164,7 @@ async function loadCandidates() {
         positionsContainer.innerHTML = '';
 
         if (positions.length === 0) {
-            positionsContainer.innerHTML = '<p>No positions available for voting.</p>';
+            positionsContainer.innerHTML = '<p class="message info">No positions available for voting.</p>';
             return;
         }
 
@@ -192,11 +192,11 @@ async function loadCandidates() {
 
     } catch (error) {
         console.error('Error loading candidates:', error);
-        positionsContainer.innerHTML = '<p class="error">Error loading voting positions. Please try again.</p>';
+        positionsContainer.innerHTML = '<p class="message error">Error loading voting positions. Please try again.</p>';
     }
 }
 
-// Create position element with candidates
+// Create position element with candidates (UPDATED: Added picture support)
 function createPositionElement(position, candidates) {
     const positionDiv = document.createElement('div');
     positionDiv.className = 'position-section pending';
@@ -205,16 +205,24 @@ function createPositionElement(position, candidates) {
     let candidatesHTML = '';
     if (candidates.length > 0) {
         candidates.forEach(candidate => {
+            // Use candidate picture if available, otherwise use default avatar
+            const candidatePicture = candidate.picture_url 
+                ? `<img src="${candidate.picture_url}" alt="${candidate.name}" class="candidate-picture" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNDAiIGZpbGw9IiMzMjRhYjIiLz4KPGNpcmNsZSBjeD0iNDAiIGN5PSIzMCIgcj0iMTUiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yNSA2MEMyNSA1MCA0NSA1MCA1NSA2MCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPgo='">`
+                : `<div class="candidate-picture" style="background: var(--violet-blue); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px;">${candidate.name.charAt(0)}</div>`;
+            
             candidatesHTML += `
                 <div class="candidate" onclick="selectCandidate('${position.id}', '${candidate.id}', this)">
-                    <h3>${candidate.name}</h3>
-                    <p>${candidate.description || 'No description available'}</p>
-                    <button>SELECT</button>
+                    ${candidatePicture}
+                    <div class="candidate-info">
+                        <h3>${candidate.name}</h3>
+                        <p>${candidate.description || 'No description available'}</p>
+                        <button>SELECT</button>
+                    </div>
                 </div>
             `;
         });
     } else {
-        candidatesHTML = '<p>No candidates available for this position</p>';
+        candidatesHTML = '<p class="message info">No candidates available for this position</p>';
     }
     
     positionDiv.innerHTML = `
@@ -225,7 +233,9 @@ function createPositionElement(position, candidates) {
         <div class="candidates-container">
             ${candidatesHTML}
         </div>
-        <button class="skip-btn" onclick="skipPosition('${position.id}')">Skip This Position</button>
+        <button class="skip-btn secondary-btn" onclick="skipPosition('${position.id}')">
+            <i class="fas fa-forward"></i> Skip This Position
+        </button>
     `;
     
     return positionDiv;
@@ -298,6 +308,13 @@ function updateCompletionStatus() {
         reviewButton.textContent = votedPositions > 0 ? 
             `Review Votes (${votedPositions}/${totalPositions})` : 
             'Review Votes';
+        
+        // Add animation when ready to review
+        if (votedPositions > 0) {
+            reviewButton.style.animation = 'pulse 2s infinite';
+        } else {
+            reviewButton.style.animation = 'none';
+        }
     }
     
     // Update position status indicators
@@ -317,12 +334,16 @@ function updatePositionStatus(positionId, candidateId) {
     if (candidateId && candidateId !== 'skipped') {
         positionDiv.className = 'position-section voted';
         statusElement.textContent = 'Voted';
+        statusElement.style.color = 'var(--forest-green)';
+        statusElement.style.fontWeight = 'bold';
     } else if (candidateId === 'skipped') {
         positionDiv.className = 'position-section skipped';
         statusElement.textContent = 'Skipped';
+        statusElement.style.color = 'var(--warning)';
     } else {
         positionDiv.className = 'position-section pending';
         statusElement.textContent = 'Not Voted';
+        statusElement.style.color = 'var(--violet-blue)';
     }
 }
 
@@ -331,7 +352,7 @@ function reviewVotes() {
     const reviewContainer = document.getElementById('reviewContainer');
     if (!reviewContainer) return;
     
-    let reviewHTML = '<h3>Your Votes</h3>';
+    let reviewHTML = '<h3><i class="fas fa-clipboard-check"></i> Your Votes</h3>';
     
     for (const [positionId, candidateId] of Object.entries(window.votingApp.selectedCandidates)) {
         const positionDiv = document.getElementById(`position-${positionId}`);
@@ -346,7 +367,9 @@ function reviewVotes() {
                         <div class="review-item">
                             <span class="review-position">${positionTitle}</span>
                             <span class="review-candidate">${candidateName}</span>
-                            <span class="change-vote" onclick="changeVoteForPosition('${positionId}')">Change</span>
+                            <span class="change-vote" onclick="changeVoteForPosition('${positionId}')">
+                                <i class="fas fa-edit"></i> Change
+                            </span>
                         </div>
                     `;
                 }
@@ -354,16 +377,20 @@ function reviewVotes() {
                 reviewHTML += `
                     <div class="review-item">
                         <span class="review-position">${positionTitle}</span>
-                        <span class="review-skipped">Skipped</span>
-                        <span class="change-vote" onclick="changeVoteForPosition('${positionId}')">Change</span>
+                        <span class="review-skipped" style="color: var(--warning);"><i class="fas fa-forward"></i> Skipped</span>
+                        <span class="change-vote" onclick="changeVoteForPosition('${positionId}')">
+                            <i class="fas fa-edit"></i> Change
+                        </span>
                     </div>
                 `;
             } else {
                 reviewHTML += `
                     <div class="review-item">
                         <span class="review-position">${positionTitle}</span>
-                        <span class="review-skipped">Not voted yet</span>
-                        <span class="change-vote" onclick="changeVoteForPosition('${positionId}')">Change</span>
+                        <span class="review-skipped" style="color: var(--violet-blue);"><i class="fas fa-clock"></i> Not voted yet</span>
+                        <span class="change-vote" onclick="changeVoteForPosition('${positionId}')">
+                            <i class="fas fa-edit"></i> Change
+                        </span>
                     </div>
                 `;
             }
@@ -387,6 +414,12 @@ function changeVoteForPosition(positionId) {
         const positionDiv = document.getElementById(`position-${positionId}`);
         if (positionDiv) {
             positionDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Add highlight animation
+            positionDiv.style.animation = 'highlight 2s ease';
+            setTimeout(() => {
+                positionDiv.style.animation = '';
+            }, 2000);
         }
     }, 100);
 }
@@ -415,6 +448,7 @@ async function castVotes() {
     
     showMessage(votingMessage, 'Submitting your votes...', 'info');
     submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
     
     try {
         let votesCast = 0;
@@ -458,7 +492,7 @@ async function castVotes() {
         
         showMessage(votingMessage, `Success! ${votesCast} vote(s) recorded.`, 'success');
         
-        // Show completion screen (CHANGED: No redirect to results page)
+        // Show completion screen
         setTimeout(() => {
             showSection('completionSection');
         }, 2000);
@@ -467,6 +501,7 @@ async function castVotes() {
         console.error('Vote submission error:', error);
         showMessage(votingMessage, 'Error submitting votes: ' + error.message, 'error');
         submitButton.disabled = false;
+        submitButton.innerHTML = 'Submit Votes';
     }
 }
 
@@ -474,8 +509,18 @@ async function castVotes() {
 function showMessage(element, message, type) {
     if (!element) return;
     
-    element.textContent = message;
+    element.innerHTML = `<i class="fas fa-${getIconForMessageType(type)}"></i> ${message}`;
     element.className = `message ${type}`;
+}
+
+function getIconForMessageType(type) {
+    const icons = {
+        'error': 'exclamation-triangle',
+        'success': 'check-circle',
+        'info': 'info-circle',
+        'warning': 'exclamation-circle'
+    };
+    return icons[type] || 'info-circle';
 }
 
 function showSection(sectionId) {
@@ -503,6 +548,29 @@ function showAlreadyVotedNotification() {
     const loginMessage = document.getElementById('loginMessage');
     showMessage(loginMessage, 'You have already voted.', 'error');
 }
+
+// Add highlight animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes highlight {
+        0% { background-color: transparent; }
+        50% { background-color: rgba(34, 139, 34, 0.1); }
+        100% { background-color: transparent; }
+    }
+    
+    .loading-results {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+    
+    .loading-results i {
+        font-size: 3em;
+        margin-bottom: 20px;
+        color: var(--violet-blue);
+    }
+`;
+document.head.appendChild(style);
 
 // Make functions globally available
 window.handleVoterLogin = handleVoterLogin;
