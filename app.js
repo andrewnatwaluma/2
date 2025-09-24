@@ -1,5 +1,3 @@
-[file name]: app.js
-[file content begin]
 // app.js - Complete Voting System with Multi-Position Support
 const SUPABASE_URL = 'https://aeulakfebabgocbevjis.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFldWxha2ZlYmFiZ29jYmV2amlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NzYzMjIsImV4cCI6MjA3NDE1MjMyMn0.TAdkgFLLdpfn38YWRSnTtveEJLFVk_c8EgE9nEwoLf0';
@@ -519,4 +517,3 @@ window.reviewVotes = reviewVotes;
 window.changeVoteForPosition = changeVoteForPosition;
 window.goBackToVoting = goBackToVoting;
 window.castVotes = castVotes;
-[file content end]
