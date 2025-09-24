@@ -12,7 +12,8 @@ window.votingApp = {
     hasVotedOnThisDevice: localStorage.getItem('hasVotedOnThisDevice') === 'true',
     positions: [],
     electionEndTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
-    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+    selectedLicenseFile: null
 };
 
 // Initialize application
@@ -41,12 +42,12 @@ function setupMobileOptimizations() {
         document.body.classList.add('mobile-device');
         
         // Increase tap targets for critical buttons
-        const criticalButtons = document.querySelectorAll('button, .candidate, .change-vote');
+        const criticalButtons = document.querySelectorAll('button, .candidate, .change-vote, .upload-option');
         criticalButtons.forEach(btn => {
             btn.style.minHeight = '44px';
-            btn.style.display = 'flex';
-            btn.style.alignItems = 'center';
-            btn.style.justifyContent = 'center';
+            if (btn.classList.contains('upload-option')) {
+                btn.style.minHeight = '120px';
+            }
         });
 
         // Optimize scroll behavior for mobile
@@ -57,30 +58,26 @@ function setupMobileOptimizations() {
     window.addEventListener('orientationchange', function() {
         setTimeout(() => {
             window.scrollTo(0, 0);
-            // Force reflow for certain elements
-            const activeSection = document.querySelector('section.active');
-            if (activeSection) {
-                activeSection.style.display = 'none';
-                setTimeout(() => {
-                    activeSection.style.display = 'block';
-                }, 10);
-            }
         }, 100);
     });
 
-    // Prevent accidental form submission on mobile
-    document.addEventListener('touchstart', function(e) {
-        if (e.target.tagName === 'BUTTON' && e.target.disabled) {
-            e.preventDefault();
-            e.target.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                e.target.style.transform = '';
-            }, 150);
-        }
-    }, { passive: false });
+    // Enhanced file input handling for mobile
+    const fileInput = document.getElementById('licenseUpload');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.size > 10 * 1024 * 1024) {
+                    showMessage(document.getElementById('uploadMessage'), 
+                               'File too large. Maximum size is 10MB.', 'error');
+                    this.value = '';
+                }
+            }
+        });
+    }
 }
 
-// Election timer functionality with mobile optimization
+// Enhanced election timer for mobile
 function initializeElectionTimer() {
     const timerElement = document.getElementById('electionTimer');
     const countdownElement = document.getElementById('countdown');
@@ -101,7 +98,7 @@ function initializeElectionTimer() {
         
         // Mobile-friendly format
         if (window.votingApp.isMobile && window.innerWidth < 768) {
-            countdownElement.textContent = `${hours}h ${minutes}m`; // Shorter format for mobile
+            countdownElement.textContent = `${hours}h ${minutes}m`;
         } else {
             countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
         }
@@ -124,6 +121,111 @@ function checkDeviceVotingStatus() {
             </div>
         `;
     }
+}
+
+// Enhanced License Upload Functions
+function openCamera() {
+    const fileInput = document.getElementById('licenseUpload');
+    fileInput.setAttribute('capture', 'environment');
+    fileInput.accept = 'image/*';
+    fileInput.onchange = handleFileSelection;
+    fileInput.click();
+}
+
+function openGallery() {
+    const fileInput = document.getElementById('licenseUpload');
+    fileInput.removeAttribute('capture');
+    fileInput.accept = 'image/*';
+    fileInput.onchange = handleFileSelection;
+    fileInput.click();
+}
+
+function handleFileSelection(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showMessage(document.getElementById('uploadMessage'), 
+                   'File too large. Please select a file smaller than 10MB.', 'error');
+        resetUpload();
+        return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        showMessage(document.getElementById('uploadMessage'), 
+                   'Please select a valid image file (JPEG, PNG, etc.).', 'error');
+        resetUpload();
+        return;
+    }
+
+    // Show preview
+    showLicensePreview(file);
+}
+
+function showLicensePreview(file) {
+    const preview = document.getElementById('licensePreview');
+    const previewImage = document.getElementById('previewImage');
+    const uploadMessage = document.getElementById('uploadMessage');
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        previewImage.src = e.target.result;
+        preview.style.display = 'block';
+        
+        // Store the file for confirmation
+        window.votingApp.selectedLicenseFile = file;
+        
+        showMessage(uploadMessage, 'Please confirm your license upload.', 'info');
+        
+        // Scroll to preview for better mobile experience
+        preview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    
+    reader.onerror = function() {
+        showMessage(uploadMessage, 'Error reading file. Please try again.', 'error');
+        resetUpload();
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function confirmUpload() {
+    const uploadMessage = document.getElementById('uploadMessage');
+    
+    if (!window.votingApp.selectedLicenseFile) {
+        showMessage(uploadMessage, 'No license file selected.', 'error');
+        return;
+    }
+
+    showMessage(uploadMessage, 'License uploaded successfully!', 'success');
+    
+    setTimeout(() => {
+        showSection('votingSection');
+        loadCandidates();
+        updateProgress(3, 'Step 3 of 4: Cast Your Votes');
+        
+        // Auto-scroll to top for mobile
+        window.scrollTo(0, 0);
+    }, 1500);
+}
+
+function cancelUpload() {
+    resetUpload();
+    showMessage(document.getElementById('uploadMessage'), 
+               'Upload cancelled. Please select a license file.', 'info');
+}
+
+function resetUpload() {
+    const fileInput = document.getElementById('licenseUpload');
+    const preview = document.getElementById('licensePreview');
+    
+    fileInput.value = '';
+    preview.style.display = 'none';
+    window.votingApp.selectedLicenseFile = null;
 }
 
 // Handle voter login with mobile optimizations
@@ -179,14 +281,6 @@ async function handleVoterLogin() {
             
             // Auto-scroll to top for better mobile experience
             window.scrollTo(0, 0);
-            
-            // Auto-focus license upload for better mobile flow
-            setTimeout(() => {
-                const licenseUpload = document.getElementById('licenseUpload');
-                if (licenseUpload) {
-                    licenseUpload.focus();
-                }
-            }, 500);
         }, 1000);
 
     } catch (error) {
@@ -206,23 +300,21 @@ function displayVoterDetails(voter) {
     document.getElementById('displayInternshipCenter').textContent = voter.internship_center || 'Not specified';
 }
 
-// Handle license upload with mobile camera support
+// Handle license upload
 function handleLicenseUpload() {
     const uploadMessage = document.getElementById('uploadMessage');
-    const fileInput = document.getElementById('licenseUpload');
     
-    if (!fileInput.files || fileInput.files.length === 0) {
-        showMessage(uploadMessage, 'Please select a license file to upload.', 'error');
-        fileInput.focus();
+    if (!window.votingApp.selectedLicenseFile) {
+        showMessage(uploadMessage, 'Please select a license file first.', 'error');
         return;
     }
+
+    const file = window.votingApp.selectedLicenseFile;
     
-    // Check file size for mobile data considerations
-    const file = fileInput.files[0];
-    const maxSize = 5 * 1024 * 1024; // 5MB limit for mobile
-    
+    // Check file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-        showMessage(uploadMessage, 'File too large. Please select a file smaller than 5MB.', 'error');
+        showMessage(uploadMessage, 'File too large. Please select a file smaller than 10MB.', 'error');
         return;
     }
     
@@ -281,25 +373,6 @@ async function loadCandidates() {
         }
 
         updateCompletionStatus();
-
-        // Add intersection observer for mobile performance
-        if ('IntersectionObserver' in window) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            document.querySelectorAll('.position-section').forEach(section => {
-                section.style.opacity = '0';
-                section.style.transform = 'translateY(20px)';
-                section.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                observer.observe(section);
-            });
-        }
 
     } catch (error) {
         console.error('Error loading candidates:', error);
@@ -382,13 +455,6 @@ function selectCandidate(positionId, candidateId, element) {
         button.textContent = 'SELECTED ✓';
         button.classList.add('voted');
         element.classList.add('selected');
-        
-        // Scroll to show the selected candidate on mobile if needed
-        if (window.votingApp.isMobile) {
-            setTimeout(() => {
-                element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-            }, 300);
-        }
     }
     
     // Store selection
@@ -435,13 +501,6 @@ function updateCompletionStatus() {
         reviewButton.textContent = votedPositions > 0 ? 
             `Review Votes (${votedPositions}/${totalPositions})` : 
             'Review Votes';
-        
-        // Add animation when ready to review (only on desktop)
-        if (votedPositions > 0 && !window.votingApp.isMobile) {
-            reviewButton.style.animation = 'pulse 2s infinite';
-        } else {
-            reviewButton.style.animation = 'none';
-        }
     }
     
     // Update position status indicators
@@ -543,17 +602,7 @@ function changeVoteForPosition(positionId) {
     setTimeout(() => {
         const positionDiv = document.getElementById(`position-${positionId}`);
         if (positionDiv) {
-            if (window.votingApp.isMobile) {
-                positionDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                positionDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-            
-            // Add highlight animation
-            positionDiv.style.animation = 'highlight 2s ease';
-            setTimeout(() => {
-                positionDiv.style.animation = '';
-            }, 2000);
+            positionDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, 100);
 }
@@ -586,9 +635,6 @@ async function castVotes() {
     showMessage(votingMessage, 'Submitting your votes...', 'info');
     submitButton.disabled = true;
     submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    
-    // Disable interaction during submission to prevent multiple submissions
-    document.body.style.pointerEvents = 'none';
     
     try {
         let votesCast = 0;
@@ -635,7 +681,7 @@ async function castVotes() {
         // Show completion screen
         setTimeout(() => {
             showSection('completionSection');
-            window.scrollTo(0, 0); // Scroll to top on mobile
+            window.scrollTo(0, 0);
         }, 2000);
         
     } catch (error) {
@@ -643,9 +689,6 @@ async function castVotes() {
         showMessage(votingMessage, 'Error submitting votes: ' + error.message, 'error');
         submitButton.disabled = false;
         submitButton.innerHTML = 'Submit Votes';
-    } finally {
-        // Re-enable interaction
-        document.body.style.pointerEvents = 'auto';
     }
 }
 
@@ -656,16 +699,17 @@ function showMessage(element, message, type) {
     element.innerHTML = `<i class="fas fa-${getIconForMessageType(type)}"></i> ${message}`;
     element.className = `message ${type}`;
     
-    // Auto-hide success messages on mobile after delay
-    if (type === 'success' && window.votingApp.isMobile) {
+    // Add specific animations for upload messages
+    if (type === 'success') {
+        element.classList.add('upload-success');
         setTimeout(() => {
-            element.style.opacity = '0.7';
-            setTimeout(() => {
-                if (element.parentNode) {
-                    element.style.display = 'none';
-                }
-            }, 1000);
-        }, 3000);
+            element.classList.remove('upload-success');
+        }, 2000);
+    } else if (type === 'error') {
+        element.classList.add('upload-error');
+        setTimeout(() => {
+            element.classList.remove('upload-error');
+        }, 500);
     }
 }
 
@@ -705,66 +749,13 @@ function showAlreadyVotedNotification() {
     showMessage(loginMessage, 'You have already voted.', 'error');
 }
 
-// Add mobile-specific CSS animations
-const mobileStyles = document.createElement('style');
-mobileStyles.textContent = `
-    @keyframes highlight {
-        0% { background-color: transparent; }
-        50% { background-color: rgba(34, 139, 34, 0.1); }
-        100% { background-color: transparent; }
-    }
-    
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-    
-    .loading-results {
-        text-align: center;
-        padding: 40px 20px;
-        color: #666;
-    }
-    
-    .loading-results i {
-        font-size: 2.5em;
-        margin-bottom: 20px;
-        color: var(--violet-blue);
-    }
-    
-    .loading-results p {
-        font-size: 1.1rem;
-    }
-    
-    /* Mobile-specific optimizations */
-    .mobile-device input, 
-    .mobile-device select, 
-    .mobile-device textarea {
-        font-size: 16px !important; /* Prevent zoom on iOS */
-    }
-    
-    .mobile-device button:active {
-        transform: scale(0.95);
-        transition: transform 0.1s ease;
-    }
-    
-    /* Improve scroll performance on mobile */
-    .mobile-device .review-vote {
-        -webkit-overflow-scrolling: touch;
-        overflow-scrolling: touch;
-    }
-    
-    /* Optimize images for mobile */
-    .mobile-device .candidate-picture {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-    }
-`;
-document.head.appendChild(mobileStyles);
-
 // Make functions globally available
 window.handleVoterLogin = handleVoterLogin;
 window.handleLicenseUpload = handleLicenseUpload;
+window.openCamera = openCamera;
+window.openGallery = openGallery;
+window.confirmUpload = confirmUpload;
+window.cancelUpload = cancelUpload;
 window.selectCandidate = selectCandidate;
 window.skipPosition = skipPosition;
 window.reviewVotes = reviewVotes;
