@@ -13,6 +13,9 @@ window.adminApp = {
     realtimeSubscription: null
 };
 
+// Candidate Management State
+let currentEditingCandidateId = null;
+
 // Initialize admin dashboard
 document.addEventListener('DOMContentLoaded', function() {
     initializeAdminDashboard();
@@ -25,6 +28,7 @@ async function initializeAdminDashboard() {
     }
 
     await loadAdminData();
+    await loadPositionsForDropdown(); // Load positions for candidate management
     setupRealtimeUpdates();
     startSessionTimer();
 }
@@ -51,6 +55,7 @@ function checkAdminAuthentication() {
     // Show/hide superadmin sections based on role
     if (adminRole !== 'superadmin') {
         document.getElementById('superAdminSection').style.display = 'none';
+        document.getElementById('superAdminCandidateSection').style.display = 'none';
     }
 
     return true;
@@ -66,7 +71,7 @@ async function loadAdminData() {
     checkDatabaseStatus();
 }
 
-// Load admin statistics (CHANGED: Only show total voters and turnout)
+// Load admin statistics (Only show total voters and turnout)
 async function loadAdminStats() {
     try {
         const [
@@ -98,7 +103,7 @@ async function loadAdminStats() {
     }
 }
 
-// Load election results (CHANGED: Admin sees percentages only, not actual vote counts)
+// Load election results (Admin sees percentages only, not actual vote counts)
 async function loadResults() {
     try {
         const { data: results, error } = await supabase
@@ -126,7 +131,7 @@ async function loadResults() {
             resultsByPosition[result.position_title].push(result);
         });
 
-        // Full results display (CHANGED: Show percentages only)
+        // Full results display (Show percentages only)
         let resultsHTML = '';
         let previewHTML = '';
 
@@ -172,7 +177,7 @@ async function loadResults() {
     }
 }
 
-// Load voter statistics - UPDATED FUNCTION
+// Load voter statistics
 async function loadVoterStats() {
     try {
         const { data: stats, error } = await supabase
@@ -312,7 +317,7 @@ async function selectVoterForAction(voterId, voterName, hasVoted) {
     document.getElementById('voterActionSection').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Change voter's vote (superadmin override) - CHANGED: Only override specific position, keep others
+// Change voter's vote (superadmin override) - Only override specific position, keep others
 async function changeVote() {
     if (window.adminApp.adminRole !== 'superadmin') return;
 
@@ -350,7 +355,7 @@ async function changeVote() {
 
         if (positionError) throw positionError;
 
-        // Delete only the vote for this specific position (CHANGED: Only delete specific position vote)
+        // Delete only the vote for this specific position
         const { error: deleteError } = await supabase
             .from('votes')
             .delete()
@@ -449,6 +454,531 @@ async function showVotedVoters() {
     }
 }
 
+// CANDIDATE MANAGEMENT FUNCTIONS
+
+// Load positions for dropdown
+async function loadPositionsForDropdown() {
+    try {
+        const { data: positions, error } = await supabase
+            .from('positions')
+            .select('*')
+            .order('title');
+
+        if (error) throw error;
+
+        const editSelect = document.getElementById('editCandidatePosition');
+        const addSelect = document.getElementById('newCandidatePosition');
+        
+        editSelect.innerHTML = '<option value="">Select Position</option>';
+        addSelect.innerHTML = '<option value="">Select Position</option>';
+        
+        if (positions && positions.length > 0) {
+            positions.forEach(position => {
+                const option = document.createElement('option');
+                option.value = position.id;
+                option.textContent = position.title;
+                editSelect.appendChild(option.cloneNode(true));
+                addSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading positions:', error);
+    }
+}
+
+// Search candidates
+async function searchCandidates() {
+    const searchTerm = document.getElementById('candidateSearch').value.trim();
+    const resultsDiv = document.getElementById('candidateSearchResults');
+    
+    if (!searchTerm) {
+        resultsDiv.innerHTML = '<p class="message error">Please enter a search term</p>';
+        return;
+    }
+
+    resultsDiv.innerHTML = '<p class="message info">Searching...</p>';
+
+    try {
+        const { data: candidates, error } = await supabase
+            .from('candidates')
+            .select(`
+                *,
+                positions (title)
+            `)
+            .ilike('name', `%${searchTerm}%`)
+            .order('name')
+            .limit(10);
+
+        if (error) throw error;
+
+        if (!candidates || candidates.length === 0) {
+            resultsDiv.innerHTML = '<p class="message warning">No candidates found</p>';
+            return;
+        }
+
+        let html = '<div class="search-results-list">';
+        candidates.forEach(candidate => {
+            html += `
+                <div class="candidate-search-result">
+                    <div class="candidate-info">
+                        <strong>${candidate.name}</strong>
+                        <span>${candidate.positions?.title || 'No position'}</span>
+                        ${candidate.picture_url ? '<i class="fas fa-camera has-photo"></i>' : '<i class="fas fa-camera-slash no-photo"></i>'}
+                    </div>
+                    <button onclick="editCandidate('${candidate.id}')" class="secondary-btn btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        resultsDiv.innerHTML = html;
+
+    } catch (error) {
+        console.error('Candidate search error:', error);
+        resultsDiv.innerHTML = '<p class="message error">Error searching candidates</p>';
+    }
+}
+
+// Edit candidate
+async function editCandidate(candidateId) {
+    try {
+        const { data: candidate, error } = await supabase
+            .from('candidates')
+            .select(`
+                *,
+                positions (title)
+            `)
+            .eq('id', candidateId)
+            .single();
+
+        if (error) throw error;
+
+        currentEditingCandidateId = candidateId;
+        
+        // Populate form
+        document.getElementById('editingCandidateName').textContent = candidate.name;
+        document.getElementById('editCandidateName').value = candidate.name;
+        document.getElementById('editCandidateDescription').value = candidate.description || '';
+        document.getElementById('editCandidatePosition').value = candidate.position_id;
+        
+        // Handle photo display
+        const photoImg = document.getElementById('currentCandidatePhoto');
+        const noPhotoMsg = document.getElementById('noPhotoMessage');
+        const removeBtn = document.getElementById('removePhotoBtn');
+        
+        if (candidate.picture_url) {
+            photoImg.src = candidate.picture_url;
+            photoImg.style.display = 'block';
+            noPhotoMsg.style.display = 'none';
+            removeBtn.style.display = 'block';
+        } else {
+            photoImg.style.display = 'none';
+            noPhotoMsg.style.display = 'block';
+            removeBtn.style.display = 'none';
+        }
+        
+        // Show edit form
+        document.getElementById('candidateEditForm').style.display = 'block';
+        document.getElementById('candidateSearchResults').innerHTML = '';
+        
+        // Scroll to form
+        document.getElementById('candidateEditForm').scrollIntoView({ behavior: 'smooth' });
+
+    } catch (error) {
+        console.error('Error loading candidate:', error);
+        showAdminMessage(document.getElementById('candidateEditMessage'), 'Error loading candidate: ' + error.message, 'error');
+    }
+}
+
+// Upload candidate photo
+async function uploadCandidatePhoto() {
+    const fileInput = document.getElementById('newCandidatePhoto');
+    const messageElement = document.getElementById('candidateEditMessage');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showAdminMessage(messageElement, 'Please select a photo to upload', 'error');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const maxSize = 2 * 1024 * 1024; // 2MB limit for candidate photos
+    
+    if (file.size > maxSize) {
+        showAdminMessage(messageElement, 'File too large. Maximum size is 2MB.', 'error');
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        showAdminMessage(messageElement, 'Please select a valid image file.', 'error');
+        return;
+    }
+
+    showAdminMessage(messageElement, 'Uploading photo...', 'info');
+
+    try {
+        // Create unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${currentEditingCandidateId}-${Date.now()}.${fileExt}`;
+        const filePath = `candidate-photos/${fileName}`;
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('candidate-photos')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+            .from('candidate-photos')
+            .getPublicUrl(filePath);
+
+        // Update candidate record with photo URL
+        const { error: updateError } = await supabase
+            .from('candidates')
+            .update({ picture_url: urlData.publicUrl })
+            .eq('id', currentEditingCandidateId);
+
+        if (updateError) throw updateError;
+
+        // Update UI
+        const photoImg = document.getElementById('currentCandidatePhoto');
+        const noPhotoMsg = document.getElementById('noPhotoMessage');
+        const removeBtn = document.getElementById('removePhotoBtn');
+        
+        photoImg.src = urlData.publicUrl;
+        photoImg.style.display = 'block';
+        noPhotoMsg.style.display = 'none';
+        removeBtn.style.display = 'block';
+        
+        fileInput.value = ''; // Clear file input
+        
+        showAdminMessage(messageElement, 'Photo uploaded successfully!', 'success');
+        
+        // Refresh candidates list
+        setTimeout(() => {
+            loadAllCandidates();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Photo upload error:', error);
+        showAdminMessage(messageElement, 'Error uploading photo: ' + error.message, 'error');
+    }
+}
+
+// Remove candidate photo
+async function removeCandidatePhoto() {
+    const messageElement = document.getElementById('candidateEditMessage');
+    
+    if (!confirm('Are you sure you want to remove this photo?')) {
+        return;
+    }
+
+    showAdminMessage(messageElement, 'Removing photo...', 'info');
+
+    try {
+        // Update candidate record to remove photo URL
+        const { error: updateError } = await supabase
+            .from('candidates')
+            .update({ picture_url: null })
+            .eq('id', currentEditingCandidateId);
+
+        if (updateError) throw updateError;
+
+        // Update UI
+        const photoImg = document.getElementById('currentCandidatePhoto');
+        const noPhotoMsg = document.getElementById('noPhotoMessage');
+        const removeBtn = document.getElementById('removePhotoBtn');
+        
+        photoImg.style.display = 'none';
+        noPhotoMsg.style.display = 'block';
+        removeBtn.style.display = 'none';
+        
+        showAdminMessage(messageElement, 'Photo removed successfully!', 'success');
+        
+        // Refresh candidates list
+        setTimeout(() => {
+            loadAllCandidates();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Photo removal error:', error);
+        showAdminMessage(messageElement, 'Error removing photo: ' + error.message, 'error');
+    }
+}
+
+// Update candidate details
+async function updateCandidate() {
+    const name = document.getElementById('editCandidateName').value.trim();
+    const description = document.getElementById('editCandidateDescription').value.trim();
+    const positionId = document.getElementById('editCandidatePosition').value;
+    const messageElement = document.getElementById('candidateEditMessage');
+
+    if (!name) {
+        showAdminMessage(messageElement, 'Please enter a candidate name', 'error');
+        return;
+    }
+
+    if (!positionId) {
+        showAdminMessage(messageElement, 'Please select a position', 'error');
+        return;
+    }
+
+    showAdminMessage(messageElement, 'Updating candidate...', 'info');
+
+    try {
+        const { error } = await supabase
+            .from('candidates')
+            .update({
+                name: name,
+                description: description,
+                position_id: positionId,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', currentEditingCandidateId);
+
+        if (error) throw error;
+
+        showAdminMessage(messageElement, 'Candidate updated successfully!', 'success');
+        
+        // Refresh search results and list
+        setTimeout(() => {
+            searchCandidates();
+            loadAllCandidates();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Candidate update error:', error);
+        showAdminMessage(messageElement, 'Error updating candidate: ' + error.message, 'error');
+    }
+}
+
+// Show add candidate form
+function showAddCandidateForm() {
+    document.getElementById('addCandidateForm').style.display = 'block';
+    document.getElementById('candidateSearchResults').innerHTML = '';
+    document.getElementById('addCandidateMessage').innerHTML = '';
+    
+    // Clear form
+    document.getElementById('newCandidateName').value = '';
+    document.getElementById('newCandidateDescription').value = '';
+    document.getElementById('newCandidatePosition').value = '';
+    document.getElementById('newCandidatePhotoInput').value = '';
+    
+    // Scroll to form
+    document.getElementById('addCandidateForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Create new candidate
+async function createCandidate() {
+    const name = document.getElementById('newCandidateName').value.trim();
+    const description = document.getElementById('newCandidateDescription').value.trim();
+    const positionId = document.getElementById('newCandidatePosition').value;
+    const photoFile = document.getElementById('newCandidatePhotoInput').files[0];
+    const messageElement = document.getElementById('addCandidateMessage');
+
+    if (!name) {
+        showAdminMessage(messageElement, 'Please enter a candidate name', 'error');
+        return;
+    }
+
+    if (!positionId) {
+        showAdminMessage(messageElement, 'Please select a position', 'error');
+        return;
+    }
+
+    showAdminMessage(messageElement, 'Creating candidate...', 'info');
+
+    try {
+        // First create the candidate
+        const { data: candidate, error: createError } = await supabase
+            .from('candidates')
+            .insert([{
+                name: name,
+                description: description,
+                position_id: positionId,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (createError) throw createError;
+
+        let pictureUrl = null;
+
+        // Upload photo if provided
+        if (photoFile) {
+            const maxSize = 2 * 1024 * 1024;
+            if (photoFile.size > maxSize) {
+                throw new Error('Photo file too large. Maximum size is 2MB.');
+            }
+
+            if (!photoFile.type.startsWith('image/')) {
+                throw new Error('Please select a valid image file.');
+            }
+
+            const fileExt = photoFile.name.split('.').pop();
+            const fileName = `${candidate.id}-${Date.now()}.${fileExt}`;
+            const filePath = `candidate-photos/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('candidate-photos')
+                .upload(filePath, photoFile);
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+                .from('candidate-photos')
+                .getPublicUrl(filePath);
+
+            pictureUrl = urlData.publicUrl;
+
+            // Update candidate with photo URL
+            const { error: updateError } = await supabase
+                .from('candidates')
+                .update({ picture_url: pictureUrl })
+                .eq('id', candidate.id);
+
+            if (updateError) throw updateError;
+        }
+
+        showAdminMessage(messageElement, 'Candidate created successfully!', 'success');
+        
+        // Clear form and hide it
+        setTimeout(() => {
+            document.getElementById('addCandidateForm').style.display = 'none';
+            document.getElementById('newCandidateName').value = '';
+            document.getElementById('newCandidateDescription').value = '';
+            document.getElementById('newCandidatePosition').value = '';
+            document.getElementById('newCandidatePhotoInput').value = '';
+            
+            // Refresh lists
+            loadAllCandidates();
+        }, 1500);
+
+    } catch (error) {
+        console.error('Candidate creation error:', error);
+        showAdminMessage(messageElement, 'Error creating candidate: ' + error.message, 'error');
+    }
+}
+
+// Load all candidates
+async function loadAllCandidates() {
+    const listDiv = document.getElementById('allCandidatesList');
+    listDiv.innerHTML = '<p class="message info">Loading candidates...</p>';
+
+    try {
+        const { data: candidates, error } = await supabase
+            .from('candidates')
+            .select(`
+                *,
+                positions (title)
+            `)
+            .order('name');
+
+        if (error) throw error;
+
+        if (!candidates || candidates.length === 0) {
+            listDiv.innerHTML = '<p class="message warning">No candidates found</p>';
+            return;
+        }
+
+        let html = `
+            <div class="candidates-table">
+                <div class="table-header">
+                    <span>Photo</span>
+                    <span>Name</span>
+                    <span>Position</span>
+                    <span>Actions</span>
+                </div>
+        `;
+
+        candidates.forEach(candidate => {
+            html += `
+                <div class="table-row">
+                    <span class="photo-cell">
+                        ${candidate.picture_url 
+                            ? `<img src="${candidate.picture_url}" alt="${candidate.name}" class="candidate-thumb">`
+                            : '<i class="fas fa-user-circle no-photo"></i>'
+                        }
+                    </span>
+                    <span class="name-cell">${candidate.name}</span>
+                    <span class="position-cell">${candidate.positions?.title || 'N/A'}</span>
+                    <span class="actions-cell">
+                        <button onclick="editCandidate('${candidate.id}')" class="secondary-btn btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button onclick="deleteCandidate('${candidate.id}')" class="danger-btn btn-sm">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </span>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        listDiv.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading candidates:', error);
+        listDiv.innerHTML = '<p class="message error">Error loading candidates</p>';
+    }
+}
+
+// Delete candidate
+async function deleteCandidate(candidateId) {
+    if (!confirm('WARNING: This will permanently delete the candidate and all their votes. This action cannot be undone. Are you sure?')) {
+        return;
+    }
+
+    try {
+        // First check if candidate has votes
+        const { data: votes, error: votesError } = await supabase
+            .from('votes')
+            .select('id')
+            .eq('candidate_id', candidateId)
+            .limit(1);
+
+        if (votesError) throw votesError;
+
+        if (votes && votes.length > 0) {
+            if (!confirm('This candidate has votes recorded. Deleting them will also delete all their votes. Continue?')) {
+                return;
+            }
+        }
+
+        // Delete candidate
+        const { error: deleteError } = await supabase
+            .from('candidates')
+            .delete()
+            .eq('id', candidateId);
+
+        if (deleteError) throw deleteError;
+
+        alert('Candidate deleted successfully!');
+        loadAllCandidates();
+
+    } catch (error) {
+        console.error('Error deleting candidate:', error);
+        alert('Error deleting candidate: ' + error.message);
+    }
+}
+
+// Cancel edit
+function cancelEdit() {
+    document.getElementById('candidateEditForm').style.display = 'none';
+    currentEditingCandidateId = null;
+    document.getElementById('candidateEditMessage').innerHTML = '';
+}
+
+// Cancel add
+function cancelAdd() {
+    document.getElementById('addCandidateForm').style.display = 'none';
+    document.getElementById('addCandidateMessage').innerHTML = '';
+}
+
 // SYSTEM MANAGEMENT FUNCTIONS
 
 // Restart election (superadmin only)
@@ -537,7 +1067,6 @@ function refreshResults() {
 }
 
 function updateElectionTimerDisplay() {
-    // Implementation for election timer control
     document.getElementById('electionEndTimeDisplay').textContent = new Date().toLocaleString();
 }
 
@@ -626,3 +1155,16 @@ window.exportResults = exportResults;
 window.refreshAllData = refreshAllData;
 window.refreshResults = refreshResults;
 window.logout = logout;
+
+// Candidate Management Functions
+window.searchCandidates = searchCandidates;
+window.editCandidate = editCandidate;
+window.uploadCandidatePhoto = uploadCandidatePhoto;
+window.removeCandidatePhoto = removeCandidatePhoto;
+window.updateCandidate = updateCandidate;
+window.showAddCandidateForm = showAddCandidateForm;
+window.createCandidate = createCandidate;
+window.loadAllCandidates = loadAllCandidates;
+window.deleteCandidate = deleteCandidate;
+window.cancelEdit = cancelEdit;
+window.cancelAdd = cancelAdd;
