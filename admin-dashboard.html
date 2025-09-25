@@ -46,6 +46,9 @@
                             <button onclick="showSection('voterManagementSection')" class="secondary-btn">
                                 <i class="fas fa-users"></i> Voter Management
                             </button>
+                            <button onclick="showSection('candidateManagementSection')" class="secondary-btn">
+                                <i class="fas fa-user-edit"></i> Candidate Management
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -163,6 +166,150 @@
                 </div>
             </section>
 
+            <!-- NEW: Candidate Management Section -->
+            <section id="candidateManagementSection">
+                <h2><i class="fas fa-user-edit"></i> Candidate Management</h2>
+                
+                <div class="navigation">
+                    <button onclick="showSection('dashboardSection')" class="secondary-btn">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </button>
+                </div>
+
+                <!-- Super Admin Tools for Candidate Management -->
+                <div id="superAdminCandidateSection" class="admin-section">
+                    <h3><i class="fas fa-images"></i> Candidate Photo Management</h3>
+                    <p class="warning"><em>Manage candidate profiles and photos</em></p>
+                    
+                    <div class="admin-tools">
+                        <div class="tool-card">
+                            <h4><i class="fas fa-search"></i> Find Candidate</h4>
+                            <div class="input-group">
+                                <input type="text" id="candidateSearch" placeholder="Enter candidate name">
+                                <button onclick="searchCandidates()" class="secondary-btn">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                            <div id="candidateSearchResults" class="search-results"></div>
+                        </div>
+                        
+                        <div class="tool-card">
+                            <h4><i class="fas fa-plus"></i> Add New Candidate</h4>
+                            <button onclick="showAddCandidateForm()" class="secondary-btn">
+                                <i class="fas fa-user-plus"></i> Add Candidate
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Candidate Edit Form -->
+                    <div id="candidateEditForm" class="tool-card" style="display: none;">
+                        <h4><i class="fas fa-edit"></i> Edit Candidate</h4>
+                        <p>Editing: <strong id="editingCandidateName"></strong></p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="editCandidateName">Candidate Name:</label>
+                                <input type="text" id="editCandidateName" class="form-input">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editCandidateDescription">Description:</label>
+                                <textarea id="editCandidateDescription" class="form-input" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editCandidatePosition">Position:</label>
+                                <select id="editCandidatePosition" class="form-input"></select>
+                            </div>
+                        </div>
+
+                        <!-- Photo Management -->
+                        <div class="photo-management">
+                            <h5><i class="fas fa-camera"></i> Photo Management</h5>
+                            
+                            <div class="current-photo" id="currentPhotoSection">
+                                <p>Current Photo:</p>
+                                <img id="currentCandidatePhoto" src="" alt="Current photo" style="max-width: 200px; display: none;">
+                                <p id="noPhotoMessage">No photo uploaded</p>
+                                <button onclick="removeCandidatePhoto()" class="danger-btn" id="removePhotoBtn" style="display: none;">
+                                    <i class="fas fa-trash"></i> Remove Photo
+                                </button>
+                            </div>
+                            
+                            <div class="upload-new-photo">
+                                <p>Upload New Photo:</p>
+                                <input type="file" id="newCandidatePhoto" accept="image/*" style="margin: 10px 0;">
+                                <button onclick="uploadCandidatePhoto()" class="secondary-btn">
+                                    <i class="fas fa-upload"></i> Upload Photo
+                                </button>
+                                <p class="file-size-info">Max file size: 2MB • Supported: JPEG, PNG, WebP</p>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button onclick="updateCandidate()" class="secondary-btn">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <button onclick="cancelEdit()" class="danger-btn">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                        
+                        <div id="candidateEditMessage" class="message"></div>
+                    </div>
+
+                    <!-- Add Candidate Form -->
+                    <div id="addCandidateForm" class="tool-card" style="display: none;">
+                        <h4><i class="fas fa-user-plus"></i> Add New Candidate</h4>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="newCandidateName">Candidate Name:</label>
+                                <input type="text" id="newCandidateName" class="form-input" placeholder="Enter full name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="newCandidateDescription">Description:</label>
+                                <textarea id="newCandidateDescription" class="form-input" rows="3" placeholder="Candidate description"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="newCandidatePosition">Position:</label>
+                                <select id="newCandidatePosition" class="form-input"></select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="newCandidatePhotoInput">Photo:</label>
+                                <input type="file" id="newCandidatePhotoInput" accept="image/*">
+                                <p class="file-size-info">Max file size: 2MB • Supported: JPEG, PNG, WebP</p>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button onclick="createCandidate()" class="secondary-btn">
+                                <i class="fas fa-plus"></i> Create Candidate
+                            </button>
+                            <button onclick="cancelAdd()" class="danger-btn">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                        
+                        <div id="addCandidateMessage" class="message"></div>
+                    </div>
+
+                    <!-- Candidates List -->
+                    <div class="tool-card">
+                        <h4><i class="fas fa-list"></i> All Candidates</h4>
+                        <button onclick="loadAllCandidates()" class="secondary-btn">
+                            <i class="fas fa-refresh"></i> Refresh List
+                        </button>
+                        <div id="allCandidatesList" class="candidates-list">
+                            <p>Click "Refresh List" to load candidates</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- System Management Section -->
             <section id="systemSection">
                 <h2><i class="fas fa-cogs"></i> System Management</h2>
@@ -186,7 +333,7 @@
         </main>
         
         <footer>
-            <p>FUMI Secure Voting System &copy; 2023 | Admin Session Active</p>
+            <p>FUMI Secure Voting System &copy; 2025 | Admin Session Active</p>
             <p>Session started: <span id="sessionTimer"></span></p>
         </footer>
     </div>
@@ -194,4 +341,4 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="admin-dashboard.js"></script>
 </body>
-</html>
+    </html>
